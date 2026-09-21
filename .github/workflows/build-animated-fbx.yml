@@ -8,8 +8,6 @@ on:
       - "BOY VHARACTER.fbx"
       - "tools/add_lego_animations.py"
       - ".github/workflows/build-animated-fbx.yml"
-    paths-ignore:
-      - "BOY VHARACTER ANIMATED.fbx"
   workflow_dispatch:
 
 permissions:
@@ -29,8 +27,9 @@ jobs:
 
       - name: Build animated FBX
         run: |
-          mkdir -p build
-          blender -b --python tools/add_lego_animations.py --             --input "BOY VHARACTER.fbx"             --output "BOY VHARACTER ANIMATED.fbx"
+          blender -b --python tools/add_lego_animations.py -- \
+            --input "BOY VHARACTER.fbx" \
+            --output "BOY VHARACTER ANIMATED.fbx"
 
       - name: Verify output
         run: |
@@ -40,7 +39,7 @@ jobs:
       - name: Commit animated FBX
         run: |
           git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.email "41898282+github-actions[bot].users.noreply.github.com"
           git add "BOY VHARACTER ANIMATED.fbx"
           if git diff --cached --quiet; then
             echo "No generated-file changes."
