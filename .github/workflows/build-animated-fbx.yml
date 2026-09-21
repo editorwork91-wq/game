@@ -20,10 +20,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install Blender
+      - name: Install Blender and NumPy
         run: |
           sudo apt-get update
-          sudo apt-get install -y blender
+          sudo apt-get install -y blender python3-numpy
+          echo "PYTHONPATH=/usr/lib/python3/dist-packages:$PYTHONPATH" >> "$GITHUB_ENV"
+
+      - name: Verify Blender FBX dependencies
+        run: |
+          blender -b --python-expr "import numpy; print('NUMPY_OK', numpy.__version__)"
 
       - name: Build animated FBX
         run: |
