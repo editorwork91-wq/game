@@ -1,4 +1,5 @@
 name: Build animated character FBX
+# Rebuild trigger: use the latest rig/animation builder commit.
 
 on:
   push:
