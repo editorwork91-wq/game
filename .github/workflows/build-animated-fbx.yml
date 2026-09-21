@@ -8,6 +8,7 @@ on:
     paths:
       - "BOY VHARACTER.fbx"
       - "tools/add_lego_animations.py"
+      - "tools/validate_animated_fbx.py"
       - ".github/workflows/build-animated-fbx.yml"
   workflow_dispatch:
 
@@ -41,6 +42,11 @@ jobs:
         run: |
           test -s "BOY VHARACTER ANIMATED.fbx"
           stat -c "%n %s bytes" "BOY VHARACTER.fbx" "BOY VHARACTER ANIMATED.fbx"
+
+      - name: Re-import and validate FBX for runtime structure
+        run: |
+          blender -b --python tools/validate_animated_fbx.py -- \
+            --input "BOY VHARACTER ANIMATED.fbx"
 
       - name: Commit animated FBX
         run: |
