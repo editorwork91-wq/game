@@ -29,10 +29,139 @@ except Exception:
 
 bpy.ops.import_scene.fbx(filepath=os.path.abspath(INPUT), use_anim=True)
 
+
+def build_lego_rig_from_mesh(mesh_objects):
+    """Create a conservative rigid LEGO-style biped rig when the source has no armature."""
+    if not mesh_objects:
+        raise RuntimeError("No mesh objects found; refusing to fabricate a character.")
+    verts_world = []
+    for obj in mesh_objects:
+        if obj.type != "MESH" or not len(obj.data.vertices):
+            continue
+        mw = obj.matrix_world
+        verts_world.extend([mw @ v.co for v in obj.data.vertices])
+    if len(verts_world) < 8:
+        raise RuntimeError("The source mesh has too few vertices to build a safe rig.")
+
+    min_x = min(v.x for v in verts_world); max_x = max(v.x for v in verts_world)
+    min_y = min(v.y for v in verts_world); max_y = max(v.y for v in verts_world)
+    min_z = min(v.z for v in verts_world); max_z = max(v.z for v in verts_world)
+    cx = (min_x + max_x) * 0.5
+    cy = (min_y + max_y) * 0.5
+    w = max(max_x - min_x, 0.001)
+    h = max(max_z - min_z, 0.001)
+
+    z0 = min_z
+    zhip = min_z + h * 0.43
+    zspine = min_z + h * 0.57
+    zchest = min_z + h * 0.70
+    zneck = min_z + h * 0.82
+    zhead = min_z + h * 0.98
+
+    arm_data = bpy.data.armatures.new("LEGO_Biped_Rig")
+    arm_obj = bpy.data.objects.new("LEGO_Biped_Rig", arm_data)
+    bpy.context.scene.collection.objects.link(arm_obj)
+    bpy.context.view_layer.objects.active = arm_obj
+    arm_obj.select_set(True)
+    bpy.ops.object.mode_set(mode="EDIT")
+
+    def eb(name, head, tail, parent=None):
+        b = arm_data.edit_bones.new(name)
+        b.head = head
+        b.tail = tail
+        if parent:
+            b.parent = arm_data.edit_bones.get(parent)
+        return b
+
+    arm_len = max(w * 0.30, h * 0.16)
+    torso_len = h * 0.12
+    # Central chain.
+    eb("Root", (cx,cy,z0), (cx,cy,z0 + h*0.10))
+    eb("Hips", (cx,cy,zhip-h*0.035), (cx,cy,zhip+h*0.055), "Root")
+    eb("Spine", (cx,cy,zhip+h*0.02), (cx,cy,zspine), "Hips")
+    eb("Chest", (cx,cy,zspine), (cx,cy,zchest), "Spine")
+    eb("Neck", (cx,cy,zchest), (cx,cy,zneck), "Chest")
+    eb("Head", (cx,cy,zneck), (cx,cy,zhead), "Neck")
+
+    for s, side in (("L", 1.0), ("R", -1.0)):
+        sx = cx + side * w * 0.23
+        ex = cx + side * w * 0.43
+        hx = cx + side * w * 0.61
+        # Arms.
+        eb(f"UpperArm.{s}", (sx,cy,zchest-h*0.015), (ex,cy,zchest-h*0.085), "Chest")
+        eb(f"LowerArm.{s}", (ex,cy,zchest-h*0.085), (hx,cy,zchest-h*0.15), f"UpperArm.{s}")
+        eb(f"Hand.{s}", (hx,cy,zchest-h*0.15), (hx+side*w*0.06,cy,zchest-h*0.15), f"LowerArm.{s}")
+        # Legs.
+        hipx = cx + side * w * 0.10
+        kneex = cx + side * w * 0.115
+        anklex = cx + side * w * 0.13
+        zknee = min_z + h * 0.23
+        zankle = min_z + h * 0.055
+        eb(f"UpperLeg.{s}", (hipx,cy,zhip), (kneex,cy,zknee), "Hips")
+        eb(f"LowerLeg.{s}", (kneex,cy,zknee), (anklex,cy,zankle), f"UpperLeg.{s}")
+        eb(f"Foot.{s}", (anklex,cy,zankle), (anklex,cy+h*0.055,zankle), f"LowerLeg.{s}")
+
+    bpy.ops.object.mode_set(mode="POSE")
+
+    # Make the deformation deliberately rigid: ideal for blocky LEGO geometry.
+    def choose_bone(p):
+        rx = p.x - cx
+        rz = p.z
+        left = rx < 0
+        side = "L" if left else "R"
+        ax = abs(rx)
+
+        if rz > min_z + h*0.84:
+            return "Head"
+        if rz > min_z + h*0.70:
+            if ax > w*0.48:
+                return f"LowerArm.{side}"
+            if ax > w*0.29:
+                return f"UpperArm.{side}"
+            return "Chest"
+        if rz > min_z + h*0.42:
+            if ax > w*0.52:
+                return f"Hand.{side}"
+            if ax > w*0.30:
+                return f"LowerArm.{side}"
+            return "Spine" if rz < min_z + h*0.57 else "Chest"
+        if rz > min_z + h*0.08:
+            if ax > w*0.045:
+                return f"LowerLeg.{side}" if rz < min_z + h*0.23 else f"UpperLeg.{side}"
+            return "Hips"
+        if ax > w*0.05:
+            return f"Foot.{side}"
+        return "Root"
+
+    bpy.ops.object.mode_set(mode="OBJECT")
+    arm_obj.select_set(False)
+
+    for obj in mesh_objects:
+        if obj.type != "MESH":
+            continue
+        mod = obj.modifiers.new("LEGO_Armature", "ARMATURE")
+        mod.object = arm_obj
+        groups = {}
+        for b in arm_data.bones:
+            groups[b.name] = obj.vertex_groups.new(name=b.name)
+        mw = obj.matrix_world
+        for v in obj.data.vertices:
+            wp = mw @ v.co
+            bn = choose_bone(wp)
+            groups[bn].add([v.index], 1.0, "REPLACE")
+
+    bpy.context.view_layer.objects.active = arm_obj
+    arm_obj.select_set(True)
+    arm_obj.show_in_front = True
+    return arm_obj
+
 armatures = [o for o in bpy.context.scene.objects if o.type == "ARMATURE"]
 if not armatures:
-    raise RuntimeError("No ARMATURE found in the source FBX; refusing to export a potentially broken substitute.")
-arm = armatures[0]
+    mesh_objects = [o for o in bpy.context.scene.objects if o.type == "MESH"]
+    print("SOURCE_HAS_NO_ARMATURE: building conservative LEGO biped rig", len(mesh_objects), "mesh objects")
+    arm = build_lego_rig_from_mesh(mesh_objects)
+else:
+    arm = armatures[0]
 
 # Bone discovery is name-based but tolerant of common FBX/Blender conventions.
 bones = list(arm.data.bones)
