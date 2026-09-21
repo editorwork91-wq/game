@@ -6,6 +6,7 @@ import re
 from mathutils import Euler, Quaternion
 
 # Procedural, non-power LEGO/NINJAGO-style movement set.
+# v2: safer axis-angle preservation and build diagnostics.
 # The source FBX is never overwritten: an animated sibling file is exported.
 
 def arg_value(name, default=None):
@@ -93,6 +94,7 @@ for name, p in PB.items():
         "mode": p.rotation_mode,
         "euler": p.rotation_euler.copy(),
         "quat": p.rotation_quaternion.copy(),
+        "axis_angle": tuple(p.rotation_axis_angle),
         "loc": p.location.copy(),
     }
 
@@ -107,7 +109,9 @@ def set_rot(key, x=0.0, y=0.0, z=0.0):
         p.keyframe_insert("rotation_quaternion", frame=scene.frame_current, group=key)
     elif p.rotation_mode == "AXIS_ANGLE":
         # Preserve the original axis; add a simple local tilt around it.
-        p.rotation_axis_angle[3] = bx["quat"].angle + x + y + z
+        aa = list(bx["axis_angle"])
+        aa[0] = bx["axis_angle"][0] + x + y + z
+        p.rotation_axis_angle = aa
         p.keyframe_insert("rotation_axis_angle", frame=scene.frame_current, group=key)
     else:
         e = bx["euler"].copy()
@@ -131,7 +135,7 @@ def clear_to_base():
             p.rotation_quaternion = bx["quat"]
         elif p.rotation_mode == "AXIS_ANGLE":
             # Keep the original axis-angle values from the imported pose.
-            p.rotation_axis_angle = (bx["quat"].x, bx["quat"].y, bx["quat"].z, bx["quat"].angle)
+            p.rotation_axis_angle = bx["axis_angle"]
         else:
             p.rotation_euler = bx["euler"]
         p.location = bx["loc"]
@@ -291,6 +295,8 @@ clip_run()
 clip_jump()
 clip_attack()
 clip_block_hit()
+print("DETECTED_BONES:", B)
+print("GENERATED_ACTIONS:", [a.name for a in bpy.data.actions if a.name in {"Idle","Walk","Run","Jump","Attack_Combo","Block_Hit"}])
 
 # Restore the original pose as the active action while keeping all generated actions.
 arm.animation_data.action = bpy.data.actions.get("Idle")
