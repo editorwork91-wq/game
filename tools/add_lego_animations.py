@@ -6,7 +6,7 @@ import re
 from mathutils import Euler, Quaternion
 
 # Procedural, non-power LEGO/NINJAGO-style movement set.
-# v2: safer axis-angle preservation and build diagnostics.
+# v3: Blender-compatible loop metadata and safer axis-angle preservation.
 # The source FBX is never overwritten: an animated sibling file is exported.
 
 def arg_value(name, default=None):
@@ -299,7 +299,7 @@ def finish(action, extrap="NOTHING"):
     for fc in action.fcurves:
         for kp in fc.keyframe_points:
             kp.interpolation = "BEZIER"
-        fc.extrapolation = extrap
+        fc.extrapolation = "CONSTANT"
     action.frame_start = 1
     action.frame_end = scene.frame_end
 
