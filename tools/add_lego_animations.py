@@ -3,7 +3,7 @@ import math
 import os
 import sys
 import re
-from mathutils import Euler, Quaternion
+from mathutils import Euler, Quaternion, Vector
 
 # Procedural, non-power LEGO/NINJAGO-style movement set.
 # v3: Blender-compatible loop metadata and safer axis-angle preservation.
@@ -254,7 +254,7 @@ def set_loc(key, x=0.0, y=0.0, z=0.0):
     p = PB.get(key)
     if not p:
         return
-    p.location = base[key]["loc"] + (x, y, z)
+    p.location = base[key]["loc"] + Vector((x, y, z))
     p.keyframe_insert("location", frame=scene.frame_current, group=key)
 
 def clear_to_base():
