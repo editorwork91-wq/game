@@ -1,0 +1,37 @@
+name: Unity scaffold check
+
+on:
+  push:
+    branches:
+      - main
+      - feature/last-lift-unity-prototype
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  validate-scaffold:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Validate project files
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f ProjectSettings/ProjectVersion.txt
+          grep -q '2022.3.62f3' ProjectSettings/ProjectVersion.txt
+          test -f Packages/manifest.json
+          test -f Assets/Editor/LastLiftSceneBuilder.cs
+          test -f Assets/Scripts/LastLift/PlayerMotor.cs
+          test -f Assets/Scripts/LastLift/GameFlow.cs
+          test -f Assets/Scripts/LastLift/LocalProfileService.cs
+          test -f Assets/Scripts/LastLift/FollowCamera.cs
+          test -f Assets/Scripts/LastLift/MovingPlatform.cs
+          test -f Assets/Scripts/LastLift/Collectible.cs
+          test -f Assets/Scripts/LastLift/Hazard.cs
+          test -f Assets/Scripts/LastLift/LevelFinish.cs
+          test -f Assets/Scripts/LastLift/MobileInputButton.cs
+          python3 -m json.tool Packages/manifest.json >/dev/null
+          echo "Scaffold structure is present. This job does not compile Unity or build an APK."
