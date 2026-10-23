@@ -288,7 +288,7 @@ public static class LastLiftSceneBuilder
         rect.sizeDelta = dimensions;
         Text text = go.GetComponent<Text>();
         text.text = content;
-        text.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
+        text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
         text.fontSize = size;
         text.alignment = TextAnchor.MiddleCenter;
         text.color = Color.white;

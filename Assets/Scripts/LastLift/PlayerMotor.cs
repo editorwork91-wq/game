@@ -16,6 +16,8 @@ namespace LastLift
         private bool jumpQueued;
         private bool canControl = true;
         private Renderer[] visualRenderers;
+        private MovingPlatform currentPlatform;
+        private Vector3 lastPlatformPosition;
 
         public bool CanControl { get => canControl; set => canControl = value; }
 
@@ -59,6 +61,19 @@ namespace LastLift
         {
             if (!canControl) return;
 
+            // CharacterController does not automatically inherit moving-platform motion.
+            // Carry the player while grounded on the lift, then let normal collision reset it.
+            if (currentPlatform)
+            {
+                if (!controller.isGrounded) currentPlatform = null;
+                else
+                {
+                    Vector3 platformDelta = currentPlatform.transform.position - lastPlatformPosition;
+                    if (platformDelta.sqrMagnitude > 0f) controller.Move(platformDelta);
+                    lastPlatformPosition = currentPlatform.transform.position;
+                }
+            }
+
             Vector2 input = mobileInput;
 #if ENABLE_LEGACY_INPUT_MANAGER
             Vector2 keyboard = new Vector2(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical"));
@@ -84,6 +99,19 @@ namespace LastLift
             controller.Move(verticalVelocity * Time.deltaTime);
 
             if (transform.position.y < -8f && GameFlow.Instance) GameFlow.Instance.Fail();
+        }
+
+        private void OnControllerColliderHit(ControllerColliderHit hit)
+        {
+            if (hit.normal.y > 0.5f && hit.moveDirection.y < -0.1f)
+            {
+                MovingPlatform platform = hit.collider.GetComponent<MovingPlatform>();
+                if (platform)
+                {
+                    currentPlatform = platform;
+                    lastPlatformPosition = platform.transform.position;
+                }
+            }
         }
     }
 }
