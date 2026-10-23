@@ -22,7 +22,7 @@ public static class LastLiftSceneBuilder
     private static void EnsureStarterScene()
     {
         if (EditorApplication.isPlayingOrWillChangePlaymode) return;
-        if (File.Exists(ScenePath)) return;
+        if (AssetDatabase.LoadAssetAtPath<SceneAsset>(ScenePath) != null) return;
         BuildFirstLevel();
     }
 
