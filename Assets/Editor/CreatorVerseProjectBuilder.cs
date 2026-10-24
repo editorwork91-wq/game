@@ -243,7 +243,10 @@ public static class CreatorVerseProjectBuilder
     {
         GameObject go=new GameObject(name,typeof(RectTransform),typeof(CanvasRenderer),typeof(Image)); go.transform.SetParent(parent,false);
         RectTransform rt=go.GetComponent<RectTransform>(); rt.anchorMin=Vector2.zero; rt.anchorMax=Vector2.one; rt.offsetMin=Vector2.zero; rt.offsetMax=Vector2.zero;
-        go.GetComponent<Image>().color=color; return go;
+        Image panelImage=go.GetComponent<Image>(); panelImage.color=color;
+        // Full-screen decor must not block world placement raycasts on the editor camera.
+        panelImage.raycastTarget=false;
+        return go;
     }
 
     private static Text TextLabel(Transform parent,string value,int size,Vector2 amin,Vector2 amax,Vector2 pos,Vector2 dims,TextAnchor anchor)
