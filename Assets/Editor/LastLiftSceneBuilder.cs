@@ -110,11 +110,27 @@ public static class LastLiftSceneBuilder
         BuildInterface(flow, motor);
 
         EditorSceneManager.SaveScene(scene, ScenePath);
-        EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene(ScenePath, true) };
+        RefreshBuildSettings();
         PlayerSettings.defaultInterfaceOrientation = UIOrientation.LandscapeLeft;
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
         Debug.Log("LAST LIFT: generated the Level 01 scene. Press Play to test.");
+    }
+
+    private static void RefreshBuildSettings()
+    {
+        var paths = new System.Collections.Generic.List<string>();
+        AddSceneIfExists(paths, "Assets/Scenes/CreatorVerseHome.unity");
+        AddSceneIfExists(paths, "Assets/Scenes/CreatorWorldEditor.unity");
+        AddSceneIfExists(paths, ScenePath);
+        EditorBuildSettings.scenes = new EditorBuildSettingsScene[paths.Count];
+        for (int i = 0; i < paths.Count; i++)
+            EditorBuildSettings.scenes[i] = new EditorBuildSettingsScene(paths[i], true);
+    }
+
+    private static void AddSceneIfExists(System.Collections.Generic.List<string> paths, string path)
+    {
+        if (AssetDatabase.LoadAssetAtPath<SceneAsset>(path) != null) paths.Add(path);
     }
 
     private static GameObject CreateCharacterVisual(Transform parent)

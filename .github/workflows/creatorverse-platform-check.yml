@@ -1,0 +1,31 @@
+name: CreatorVerse platform scaffold check
+
+on:
+  push:
+    branches:
+      - feature/creatorverse-platform-prototype
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  validate-platform-scaffold:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate platform scaffold
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q '2022.3.62f3' ProjectSettings/ProjectVersion.txt
+          python3 -m json.tool Packages/manifest.json >/dev/null
+          test -f Assets/Scripts/CreatorVerse/CreatorVerseProfileService.cs
+          test -f Assets/Scripts/CreatorVerse/CreatorVerseHubController.cs
+          test -f Assets/Scripts/CreatorVerse/CreatorWorldEditorController.cs
+          test -f Assets/Scripts/CreatorVerse/CreatorWorldTestMotor.cs
+          test -f Assets/Editor/CreatorVerseProjectBuilder.cs
+          grep -q 'CreatorVerseHome.unity' Assets/Editor/CreatorVerseProjectBuilder.cs
+          grep -q 'CreatorWorldEditor.unity' Assets/Editor/CreatorVerseProjectBuilder.cs
+          grep -q 'Not published online' Assets/Scripts/CreatorVerse/CreatorWorldEditorController.cs
+          echo "Source/config validation passed; Unity compilation and APK creation are not tested by this workflow."
